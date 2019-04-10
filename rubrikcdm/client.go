@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -43,19 +44,22 @@ const (
 // Credentials contains the parameters used to authenticate against the Rubrik cluster and can be consumed
 // through ConnectEnv() or Connect().
 type Credentials struct {
-	NodeIP   string
-	Username string
-	Password string
+	NodeIP        string
+	Username      string
+	Password      string
+	EnableLogging bool
 }
 
 // Connect initializes a new API client based on manually provided Rubrik cluster credentials. When possible,
 // the Rubrik credentials should not be stored as plain text in your .go file. ConnectEnv() can be used
 // as a safer alternative.
-func Connect(nodeIP, username, password string) *Credentials {
+func Connect(nodeIP, username, password string, logging ...bool) *Credentials {
+
 	client := &Credentials{
-		NodeIP:   nodeIP,
-		Username: username,
-		Password: password,
+		NodeIP:        nodeIP,
+		Username:      username,
+		Password:      password,
+		EnableLogging: enableLogging(logging),
 	}
 
 	return client
@@ -69,7 +73,7 @@ func Connect(nodeIP, username, password string) *Credentials {
 //  rubrik_cdm_username
 //
 //  rubrik_cdm_password
-func ConnectEnv() (*Credentials, error) {
+func ConnectEnv(logging ...bool) (*Credentials, error) {
 
 	nodeIP, ok := os.LookupEnv("rubrik_cdm_node_ip")
 	if ok != true {
@@ -85,9 +89,10 @@ func ConnectEnv() (*Credentials, error) {
 	}
 
 	client := &Credentials{
-		NodeIP:   nodeIP,
-		Username: username,
-		Password: password,
+		NodeIP:        nodeIP,
+		Username:      username,
+		Password:      password,
+		EnableLogging: enableLogging(logging),
 	}
 
 	return client, nil
@@ -119,18 +124,26 @@ func (c *Credentials) commonAPI(callType, apiVersion, apiEndpoint string, config
 	var request *http.Request
 	switch callType {
 	case "GET":
+		c.log(fmt.Sprintf("GET %s", requestURL))
 		request, _ = http.NewRequest(callType, getEscape(requestURL), nil)
 	case "POST":
+		c.log(fmt.Sprintf("POST %s", requestURL))
 		convertedConfig, _ := json.Marshal(config)
+		c.log(fmt.Sprintf("Config: %s", convertedConfig))
 		request, _ = http.NewRequest(callType, requestURL, bytes.NewBuffer(convertedConfig))
 	case "PATCH":
+		c.log(fmt.Sprintf("PATCH %s", requestURL))
 		convertedConfig, _ := json.Marshal(config)
+		c.log(fmt.Sprintf("Config: %s", convertedConfig))
+
 		request, _ = http.NewRequest(callType, requestURL, bytes.NewBuffer(convertedConfig))
 	case "DELETE":
+		c.log(fmt.Sprintf("DELETE %s", requestURL))
 		request, _ = http.NewRequest(callType, requestURL, nil)
 	case "JOB_STATUS":
 		// Overwrite the default requstURL with the job status url and convert to string
 		requestURL = config.(string)
+		c.log(fmt.Sprintf("GET %s", requestURL))
 		request, _ = http.NewRequest("GET", requestURL, nil)
 	}
 	if len(c.Username) != 0 {
@@ -212,6 +225,24 @@ func endpointValidation(apiEndpoint string) string {
 		}
 	}
 	return "success"
+}
+
+func (c *Credentials) log(message string) {
+
+	if c.EnableLogging != true {
+		return
+	}
+
+	log.Println("[INFO] -- " + message)
+
+}
+
+func enableLogging(enable []bool) bool {
+	if len(enable) == 0 {
+		return false // if no enable value is provided, set the default to false
+	}
+	return enable[0] // set the enable value to the first value in the enable slice
+
 }
 
 // httpTimeout returns a default timeout value of 15 or use the value provided by the end user

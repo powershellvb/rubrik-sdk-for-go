@@ -88,6 +88,7 @@ func (c *Credentials) ClusterVersion(timeout ...int) (string, error) {
 
 	httpTimeout := httpTimeout(timeout)
 
+	c.log("ClusterVersion: Getting the software version of the Rubrik cluster.")
 	apiRequest, err := c.Get("v1", "/cluster/me/version", httpTimeout)
 	if err != nil {
 		return "", err
