@@ -53,13 +53,13 @@ type Credentials struct {
 // Connect initializes a new API client based on manually provided Rubrik cluster credentials. When possible,
 // the Rubrik credentials should not be stored as plain text in your .go file. ConnectEnv() can be used
 // as a safer alternative.
-func Connect(nodeIP, username, password string, logging ...bool) *Credentials {
+func Connect(nodeIP, username, password string, enableLogging ...bool) *Credentials {
 
 	client := &Credentials{
 		NodeIP:        nodeIP,
 		Username:      username,
 		Password:      password,
-		EnableLogging: enableLogging(logging),
+		EnableLogging: doLog(enableLogging),
 	}
 
 	return client
@@ -73,7 +73,7 @@ func Connect(nodeIP, username, password string, logging ...bool) *Credentials {
 //  rubrik_cdm_username
 //
 //  rubrik_cdm_password
-func ConnectEnv(logging ...bool) (*Credentials, error) {
+func ConnectEnv(enableLogging ...bool) (*Credentials, error) {
 
 	nodeIP, ok := os.LookupEnv("rubrik_cdm_node_ip")
 	if ok != true {
@@ -92,7 +92,7 @@ func ConnectEnv(logging ...bool) (*Credentials, error) {
 		NodeIP:        nodeIP,
 		Username:      username,
 		Password:      password,
-		EnableLogging: enableLogging(logging),
+		EnableLogging: doLog(enableLogging),
 	}
 
 	return client, nil
@@ -237,7 +237,7 @@ func (c *Credentials) log(message string) {
 
 }
 
-func enableLogging(enable []bool) bool {
+func doLog(enable []bool) bool {
 	if len(enable) == 0 {
 		return false // if no enable value is provided, set the default to false
 	}
