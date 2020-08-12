@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -267,6 +268,25 @@ func (c *Credentials) EndUserAuthorization(objectName, endUser, objectType strin
 
 }
 
+// Helper function to remove duplicate timezones in ConfigureTimezone func
+func mapToString(a map[string]bool) string {
+	var s string
+	keys := make([]string, 0, len(a))
+	for k := range a {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		s += fmt.Sprintf("'%s', ", key)
+	}
+
+	s = strings.TrimSuffix(s, ", ")
+
+	return s
+}
+
 // ConfigureTimezone provides the ability to set the time zone that is used by the Rubrik cluster which uses the specified
 // time zone for time values in the web UI, all reports, SLA Domain settings, and all other time related operations.
 //
@@ -322,7 +342,8 @@ func (c *Credentials) ConfigureTimezone(timezone string, timeout ...int) (*Clust
 	}
 
 	if validObjectType[timezone] == false {
-		return nil, fmt.Errorf("The 'timezone' must be 'America/Anchorage', 'America/Araguaina', 'America/Barbados', 'America/Chicago', 'America/Denver', 'America/Los_Angeles' 'America/Mexico_City', 'America/New_York', 'America/Noronha', 'America/Phoenix', 'America/Toronto', 'America/Vancouver', 'Asia/Bangkok', 'Asia/Dhaka', 'Asia/Dubai', 'Asia/Hong_Kong', 'Asia/Karachi', 'Asia/Kathmandu', 'Asia/Kolkata', 'Asia/Magadan', 'Asia/Singapore', 'Asia/Tokyo', 'Atlantic/Cape_Verde', 'Australia/Perth', 'Australia/Sydney', 'Europe/Amsterdam', 'Europe/Athens', 'Europe/London', 'Europe/Moscow', 'Pacific/Auckland', 'Pacific/Honolulu', 'Pacific/Midway', or 'UTC'")
+		errorString := mapToString(validObjectType)
+		return nil, fmt.Errorf("The 'timezone' must be %s", errorString)
 	}
 
 	clusterSummary, err := c.Get("v1", "/cluster/me", httpTimeout)
